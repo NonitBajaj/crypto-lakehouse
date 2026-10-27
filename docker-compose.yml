@@ -1,0 +1,84 @@
+services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: redpanda
+    command:
+      - redpanda start --overprovisioned --smp 1 --memory 1G
+      - --kafka-addr internal://0.0.0.0:29092,external://0.0.0.0:9092
+      - --advertise-kafka-addr internal://redpanda:29092,external://localhost:9092
+    ports:
+      - "9092:9092"
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password123
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 admin password123;
+      /usr/bin/mc mb --ignore-existing myminio/warehouse;
+      exit 0;
+      "
+
+  iceberg-rest:
+    image: tabulario/iceberg-rest:latest
+    container_name: iceberg-rest
+    environment:
+      CATALOG_WAREHOUSE: s3://warehouse/
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://minio:9000
+      CATALOG_S3_ACCESS__KEY__ID: admin
+      CATALOG_S3_SECRET__ACCESS__KEY: password123
+      CATALOG_S3_PATH__STYLE__ACCESS: "true"
+      AWS_S3_PATH_STYLE_ACCESS: "true"
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: password123
+    ports:
+      - "8181:8181"
+    depends_on:
+      - minio
+      - minio-init
+
+  trino:
+    image: trinodb/trino:latest
+    container_name: trino
+    depends_on:
+      - iceberg-rest
+      - minio
+    ports:
+      - "8080:8080"
+
+  spark-processor:
+    image: apache/spark:3.5.0
+    container_name: spark-processor
+    user: root
+    environment:
+      AWS_REGION: us-east-1
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: password123
+    depends_on:
+      - redpanda
+      - iceberg-rest
+      - minio
+      - minio-init
+    volumes:
+      - ./spark_processor.py:/opt/spark/work-dir/spark_processor.py
+      - ./checkpoints:/opt/spark/work-dir/checkpoints
+    command: >
+      /opt/spark/bin/spark-submit
+      --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.0,org.apache.iceberg:iceberg-aws-bundle:1.5.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262
+      /opt/spark/work-dir/spark_processor.py

@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KRYPTON // Institutional Lakehouse Terminal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+            },
+            surface: {
+              950: '#07090e',
+              900: '#0b0f19',
+              850: '#111827',
+              800: '#1f293d',
+              700: '#334155',
+            },
+            bull: '#00f2a1',
+            bear: '#ff3b69'
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'Menlo', 'monospace'],
+            sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #07090e;
+      color: #f1f5f9;
+      letter-spacing: -0.01em;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .glass-panel {
+      background: rgba(11, 15, 25, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .glow-bull {
+      text-shadow: 0 0 12px rgba(0, 242, 161, 0.4);
+    }
+    .glow-bear {
+      text-shadow: 0 0 12px rgba(255, 59, 105, 0.4);
+    }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #07090e; }
+    ::-webkit-scrollbar-thumb { background: #1f293d; border-radius: 2px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-surface-950 text-slate-200 antialiased select-none">
+
+  <!-- Top Institutional Bar -->
+  <header class="border-b border-white/[0.06] bg-surface-900/90 backdrop-blur-md sticky top-0 z-50 px-4 py-2.5 flex items-center justify-between">
+    <div class="flex items-center gap-6">
+      <!-- Terminal Brand -->
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-500 p-[1px] shadow-lg shadow-emerald-500/10">
+          <div class="w-full h-full bg-surface-950 rounded-lg flex items-center justify-center">
+            <i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-extrabold text-sm tracking-wider text-white">KRYPTON<span class="text-emerald-400 font-mono">.LAKEHOUSE</span></span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-bold tracking-widest uppercase">MAINNET-RT</span>
+          </div>
+          <p class="text-[10px] text-slate-500 font-mono">TRINO // ICEBERG // SPARK 3.5</p>
+        </div>
+      </div>
+
+      <!-- Asset Selector Tabs -->
+      <div class="flex items-center bg-surface-950 border border-white/[0.06] rounded-lg p-0.5 gap-1">
+        <button onclick="selectSymbol('BTC/USD')" id="btn-BTC" class="symbol-btn px-3 py-1 rounded-md text-xs font-mono font-semibold transition-all flex items-center gap-2 bg-surface-850 text-white border border-white/10 shadow-sm">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> BTC/USD
+        </button>
+        <button onclick="selectSymbol('ETH/USD')" id="btn-ETH" class="symbol-btn px-3 py-1 rounded-md text-xs font-mono font-semibold transition-all flex items-center gap-2 text-slate-400 hover:text-white">
+          <span class="w-2 h-2 rounded-full bg-indigo-400"></span> ETH/USD
+        </button>
+        <button onclick="selectSymbol('SOL/USD')" id="btn-SOL" class="symbol-btn px-3 py-1 rounded-md text-xs font-mono font-semibold transition-all flex items-center gap-2 text-slate-400 hover:text-white">
+          <span class="w-2 h-2 rounded-full bg-purple-400"></span> SOL/USD
+        </button>
+      </div>
+    </div>
+
+    <!-- Cluster Telemetry Indicators -->
+    <div class="flex items-center gap-4">
+      <div class="hidden xl:flex items-center gap-4 border-r border-white/[0.06] pr-4 text-xs font-mono">
+        <div class="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-950 border border-white/[0.04]">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span class="text-[10px] text-slate-400">REDPANDA: <span class="text-slate-200">29092</span></span>
+        </div>
+        <div class="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-950 border border-white/[0.04]">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span class="text-[10px] text-slate-400">ICEBERG: <span class="text-slate-200">REST v1</span></span>
+        </div>
+        <div class="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-950 border border-white/[0.04]">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span class="text-[10px] text-slate-400">TRINO: <span class="text-slate-200">8080</span></span>
+        </div>
+      </div>
+
+      <!-- Live Heartbeat -->
+      <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 bg-surface-950 border border-white/[0.06] px-3 py-1.5 rounded-lg text-xs font-mono">
+          <span id="sync-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span id="sync-status" class="text-slate-300 font-semibold text-[11px]">CONNECTING</span>
+        </div>
+        <button onclick="fetchData()" class="p-1.5 bg-surface-900 hover:bg-surface-850 border border-white/[0.08] rounded-lg text-slate-300 hover:text-white transition active:scale-95" title="Force Refetch">
+          <i data-lucide="refresh-cw" class="w-4 h-4" id="refresh-icon"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Metric Strip -->
+  <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 border-b border-white/[0.06] bg-surface-900/40 divide-x divide-white/[0.06] text-xs">
+    <div class="p-3 px-5">
+      <div class="text-[10px] uppercase font-mono tracking-widest text-slate-500 mb-0.5">Index Mark Price</div>
+      <div class="flex items-baseline gap-2">
+        <span id="metric-price" class="text-xl font-extrabold font-mono text-white">$0.00</span>
+        <span id="metric-change" class="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400">+0.00%</span>
+      </div>
+    </div>
+    <div class="p-3 px-5">
+      <div class="text-[10px] uppercase font-mono tracking-widest text-slate-500 mb-0.5">High (Session)</div>
+      <div id="metric-high" class="text-base font-bold font-mono text-emerald-400">$0.00</div>
+    </div>
+    <div class="p-3 px-5">
+      <div class="text-[10px] uppercase font-mono tracking-widest text-slate-500 mb-0.5">Low (Session)</div>
+      <div id="metric-low" class="text-base font-bold font-mono text-bear">$0.00</div>
+    </div>
+    <div class="p-3 px-5">
+      <div class="text-[10px] uppercase font-mono tracking-widest text-slate-500 mb-0.5">Aggregated Volume</div>
+      <div id="metric-vol" class="text-base font-bold font-mono text-slate-200">0.0000</div>
+    </div>
+    <div class="p-3 px-5 hidden lg:block">
+      <div class="text-[10px] uppercase font-mono tracking-widest text-slate-500 mb-0.5">Engine Latency</div>
+      <div id="metric-latency" class="text-base font-bold font-mono text-cyan-400">0 ms</div>
+    </div>
+    <div class="p-3 px-5 hidden lg:block">
+      <div class="text-[10px] uppercase font-mono tracking-widest text-slate-500 mb-0.5">Committed Partitions</div>
+      <div id="metric-bars" class="text-base font-bold font-mono text-purple-400">0 Snapshots</div>
+    </div>
+  </div>
+
+  <!-- Terminal Body -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+    <!-- Chart Viewport (Cols 1-9) -->
+    <section class="lg:col-span-9 border-r border-white/[0.06] flex flex-col min-h-[500px] lg:min-h-0 bg-surface-950 relative">
+      <!-- Chart Tool Strip -->
+      <div class="p-2 px-4 border-b border-white/[0.06] bg-surface-900/30 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 text-xs font-mono font-semibold text-slate-300">
+            <span id="chart-pair" class="text-white font-bold">BTC/USD</span>
+            <span class="text-slate-600">·</span>
+            <span class="text-emerald-400">1M Interval</span>
+          </div>
+          <span class="text-slate-700">|</span>
+          <div id="ohlc-legend" class="text-[11px] font-mono flex items-center gap-3 text-slate-400">
+            <span>O: <span class="text-slate-200" id="leg-o">--</span></span>
+            <span>H: <span class="text-emerald-400" id="leg-h">--</span></span>
+            <span>L: <span class="text-bear" id="leg-l">--</span></span>
+            <span>C: <span class="text-slate-200" id="leg-c">--</span></span>
+            <span>V: <span class="text-cyan-400" id="leg-v">--</span></span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1">
+          <button class="px-2.5 py-0.5 rounded bg-surface-850 text-white font-mono text-xs border border-white/10 font-bold">1m</button>
+          <button class="px-2.5 py-0.5 rounded text-slate-500 hover:text-slate-300 font-mono text-xs transition">5m</button>
+          <button class="px-2.5 py-0.5 rounded text-slate-500 hover:text-slate-300 font-mono text-xs transition">15m</button>
+        </div>
+      </div>
+
+      <!-- TradingView Canvas -->
+      <div id="chart-container" class="flex-1 w-full h-full relative"></div>
+
+      <!-- State Overlay (Spinner / Status) -->
+      <div id="chart-overlay" class="absolute inset-0 bg-surface-950/90 backdrop-blur-sm flex flex-col items-center justify-center gap-3 transition-opacity">
+        <div class="relative">
+          <div class="w-10 h-10 border-2 border-emerald-500/20 border-t-emerald-400 rounded-full animate-spin"></div>
+          <div class="absolute inset-0 flex items-center justify-center">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          </div>
+        </div>
+        <p class="text-xs font-mono text-slate-400" id="overlay-msg">Connecting to Trino Lakehouse Cluster on localhost:8000...</p>
+      </div>
+    </section>
+
+    <!-- Side Analytics Panel (Cols 10-12) -->
+    <aside class="lg:col-span-3 flex flex-col bg-surface-900/30 divide-y divide-white/[0.06]">
+      
+      <!-- Lakehouse Pipeline Details -->
+      <div class="p-4">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-[11px] uppercase font-mono tracking-widest text-slate-400 font-bold flex items-center gap-1.5">
+            <i data-lucide="activity" class="w-3.5 h-3.5 text-cyan-400"></i> Architecture Pipeline
+          </span>
+          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">ACTIVE</span>
+        </div>
+        
+        <div class="space-y-1.5 text-xs font-mono">
+          <div class="p-2 rounded-lg bg-surface-950 border border-white/[0.04] flex items-center justify-between">
+            <span class="text-slate-500">Ingestion Topic</span>
+            <span class="text-emerald-400 font-semibold">crypto_raw</span>
+          </div>
+          <div class="p-2 rounded-lg bg-surface-950 border border-white/[0.04] flex items-center justify-between">
+            <span class="text-slate-500">Engine Sink</span>
+            <span class="text-slate-200 font-semibold">Apache Spark 3.5</span>
+          </div>
+          <div class="p-2 rounded-lg bg-surface-950 border border-white/[0.04] flex items-center justify-between">
+            <span class="text-slate-500">Catalog Spec</span>
+            <span class="text-purple-400 font-semibold">Iceberg REST / S3</span>
+          </div>
+          <div class="p-2 rounded-lg bg-surface-950 border border-white/[0.04] flex items-center justify-between">
+            <span class="text-slate-500">Analytics Store</span>
+            <span class="text-amber-400 font-semibold">s3://warehouse/</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live OHLC Snapshot Tape -->
+      <div class="flex-1 p-4 flex flex-col overflow-hidden">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[11px] uppercase font-mono tracking-widest text-slate-400 font-bold flex items-center gap-1.5">
+            <i data-lucide="layers" class="w-3.5 h-3.5 text-emerald-400"></i> 1M Snapshot Tape
+          </span>
+          <span class="text-[10px] text-slate-500 font-mono">UTC</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto space-y-1.5 pr-0.5" id="tape-list">
+          <div class="text-xs font-mono text-slate-600 p-2">Awaiting micro-batch commits...</div>
+        </div>
+      </div>
+
+      <!-- System Diagnostic Footer -->
+      <div class="p-3 bg-surface-950 border-t border-white/[0.06] text-[10px] font-mono text-slate-500 flex items-center justify-between">
+        <span>GATEWAY: <span class="text-emerald-400">:8000</span></span>
+        <a href="http://localhost:8000/docs" target="_blank" class="hover:text-slate-300 underline">SWAGGER DOCS</a>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    lucide.createIcons();
+
+    // Dynamically adjust API base to current hostname (Fixes file:// & docker port bindings)
+    const API_BASE = window.location.protocol.startsWith('http') 
+      ? window.location.origin 
+      : 'http://localhost:8000';
+
+    let activeSymbol = "BTC/USD";
+    let chart, candleSeries, volumeSeries;
+
+    function initChart() {
+      const container = document.getElementById('chart-container');
+      
+      chart = LightweightCharts.createChart(container, {
+        width: container.clientWidth || 800,
+        height: container.clientHeight || 500,
+        layout: {
+          background: { color: '#07090e' },
+          textColor: '#64748b',
+          fontSize: 11,
+          fontFamily: 'JetBrains Mono',
+        },
+        grid: {
+          vertLines: { color: '#111827', style: 1 },
+          horzLines: { color: '#111827', style: 1 },
+        },
+        crosshair: {
+          mode: LightweightCharts.CrosshairMode.Normal,
+          vertLine: { width: 1, color: '#00f2a1', style: 2, labelBackgroundColor: '#0b0f19' },
+          horzLine: { width: 1, color: '#00f2a1', style: 2, labelBackgroundColor: '#0b0f19' },
+        },
+        rightPriceScale: {
+          borderColor: '#1f293d',
+          textColor: '#94a3b8',
+          scaleMargins: { top: 0.1, bottom: 0.25 },
+        },
+        timeScale: {
+          borderColor: '#1f293d',
+          timeVisible: true,
+          secondsVisible: false,
+        },
+      });
+
+      candleSeries = chart.addCandlestickSeries({
+        upColor: '#00f2a1',
+        downColor: '#ff3b69',
+        borderUpColor: '#00f2a1',
+        borderDownColor: '#ff3b69',
+        wickUpColor: '#00f2a1',
+        wickDownColor: '#ff3b69',
+      });
+
+      volumeSeries = chart.addHistogramSeries({
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+        scaleMargins: { top: 0.8, bottom: 0 },
+      });
+
+      window.addEventListener('resize', () => {
+        chart.applyOptions({
+          width: container.clientWidth,
+          height: container.clientHeight
+        });
+      });
+
+      chart.subscribeCrosshairMove((param) => {
+        if (!param.time || !param.seriesPrices.get(candleSeries)) return;
+        const candle = param.seriesPrices.get(candleSeries);
+        const volume = param.seriesPrices.get(volumeSeries);
+        
+        document.getElementById('leg-o').innerText = `$${candle.open.toFixed(2)}`;
+        document.getElementById('leg-h').innerText = `$${candle.high.toFixed(2)}`;
+        document.getElementById('leg-l').innerText = `$${candle.low.toFixed(2)}`;
+        document.getElementById('leg-c').innerText = `$${candle.close.toFixed(2)}`;
+        document.getElementById('leg-v').innerText = volume !== undefined ? volume.toFixed(2) : '--';
+      });
+    }
+
+    function selectSymbol(symbol) {
+      activeSymbol = symbol;
+      document.querySelectorAll('.symbol-btn').forEach(btn => {
+        btn.classList.remove('bg-surface-850', 'text-white', 'border', 'border-white/10', 'shadow-sm');
+        btn.classList.add('text-slate-400');
+      });
+      const activeBtnId = symbol.startsWith('BTC') ? 'btn-BTC' : (symbol.startsWith('ETH') ? 'btn-ETH' : 'btn-SOL');
+      const activeBtn = document.getElementById(activeBtnId);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-surface-850', 'text-white', 'border', 'border-white/10', 'shadow-sm');
+        activeBtn.classList.remove('text-slate-400');
+      }
+
+      document.getElementById('chart-pair').innerText = symbol;
+      document.getElementById('chart-overlay').style.opacity = '1';
+      document.getElementById('chart-overlay').style.pointerEvents = 'auto';
+      document.getElementById('overlay-msg').innerText = `Querying Trino Lakehouse for ${symbol}...`;
+      
+      fetchData();
+    }
+
+    async function fetchData() {
+      const startTime = performance.now();
+      const refreshIcon = document.getElementById('refresh-icon');
+      refreshIcon.classList.add('animate-spin');
+
+      try {
+        const response = await fetch(`${API_BASE}/api/ohlc/${encodeURIComponent(activeSymbol)}?limit=60`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        
+        const latency = Math.round(performance.now() - startTime);
+        document.getElementById('metric-latency').innerText = `${latency} ms`;
+
+        if (Array.isArray(data) && data.length > 0) {
+          // Deduplicate and enforce ascending timestamp sort
+          const map = new Map();
+          data.forEach(item => map.set(item.time, item));
+          const cleanData = Array.from(map.values()).sort((a, b) => a.time - b.time);
+
+          candleSeries.setData(cleanData.map(d => ({ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close })));
+          volumeSeries.setData(cleanData.map(d => ({
+            time: d.time,
+            value: d.volume,
+            color: d.close >= d.open ? 'rgba(0, 242, 161, 0.2)' : 'rgba(255, 59, 105, 0.2)'
+          })));
+
+          const last = cleanData[cleanData.length - 1];
+          const first = cleanData[0];
+          const high = Math.max(...cleanData.map(d => d.high));
+          const low = Math.min(...cleanData.map(d => d.low));
+          const totalVol = cleanData.reduce((acc, d) => acc + d.volume, 0);
+          const priceChange = ((last.close - first.open) / first.open) * 100;
+
+          document.getElementById('metric-price').innerText = `$${last.close.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+          
+          const changeBadge = document.getElementById('metric-change');
+          changeBadge.innerText = `${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%`;
+          changeBadge.className = `px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${
+            priceChange >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-bear border border-rose-500/20'
+          }`;
+
+          document.getElementById('metric-high').innerText = `$${high.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+          document.getElementById('metric-low').innerText = `$${low.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+          document.getElementById('metric-vol').innerText = totalVol.toFixed(4);
+          document.getElementById('metric-bars').innerText = `${cleanData.length} Snapshots`;
+
+          renderTape(cleanData.slice().reverse().slice(0, 10));
+
+          document.getElementById('chart-overlay').style.opacity = '0';
+          document.getElementById('chart-overlay').style.pointerEvents = 'none';
+
+          document.getElementById('sync-dot').className = 'w-2 h-2 rounded-full bg-emerald-400';
+          document.getElementById('sync-status').innerText = 'LIVE COMMITS';
+        } else {
+          document.getElementById('overlay-msg').innerText = `Stream connected. Awaiting Spark micro-batch commit for ${activeSymbol}...`;
+          document.getElementById('sync-dot').className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+          document.getElementById('sync-status').innerText = 'BUFFERING';
+        }
+      } catch (err) {
+        console.error("Fetch Error:", err);
+        document.getElementById('sync-dot').className = 'w-2 h-2 rounded-full bg-rose-500';
+        document.getElementById('sync-status').innerText = 'API DISCONNECTED';
+      } finally {
+        setTimeout(() => refreshIcon.classList.remove('animate-spin'), 400);
+      }
+    }
+
+    function renderTape(bars) {
+      const container = document.getElementById('tape-list');
+      container.innerHTML = bars.map(bar => {
+        const isBull = bar.close >= bar.open;
+        const timeStr = new Date(bar.time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return `
+          <div class="p-2 rounded-lg bg-surface-950 border border-white/[0.04] flex items-center justify-between text-[11px] font-mono">
+            <div class="flex items-center gap-2">
+              <span class="${isBull ? 'text-emerald-400' : 'text-bear'} font-bold">${isBull ? 'BUY' : 'SELL'}</span>
+              <span class="text-slate-500">${timeStr}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-slate-200 font-bold">$${bar.close.toFixed(2)}</span>
+              <span class="text-slate-500 text-[10px]">${bar.volume.toFixed(2)}v</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initChart();
+      fetchData();
+      setInterval(fetchData, 2500);
+    });
+  </script>
+</body>
+</html>
